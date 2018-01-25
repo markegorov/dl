@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+		<script src="http://cdn.rawgit.com/markegorov/dl/master/FileSaver.js"></script>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta name="robots" content="noindex,nofollow">
+		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+		<link href='http://fonts.googleapis.com/css?family=Play:400,700&subset=cyrillic,latin' rel='stylesheet' type='text/css'>
+		<title>СКАЧИВАНИЕ ФАЙЛА</title>
+		<style>
+				body {margin:0; padding:0;background-color:#cfcfcf}
+				.wrap {margin:0 auto; width:1020px; height:800px;}
+				.bannergoriz {width:1020px; height:10px; }
+				.bannervert {width:160px; height:600px; float:left;}
+				.downl {width:660px; height:560px; background-color:#094209; float:left; padding:20px; color:#FFFFFF;  font-family: 'Play', sans-serif;}
+				.clearfloat {clear:left;}
+				.hs {font-size:30px; font-weight: 700; text-align:center; margin:0 0 20px 0;}
+				.fa-download {font-size:70px; margin:0 0 30px 297px;}
+				.name, .fileweight {margin:0 0 10px 0; font-size:16px;}
+				.h-name, .h-fileweight {font-size:20px; font-weight: 700; margin: 0 10px 0 0;}
+				.icosize {font-size:30px; margin:20px 0 20px 317px;}
+				.wait {font-size:18px; text-align:center; font-weight: 700; margin:0 0 50px 0;}
+				.txt {font-size:16px; text-align:center; margin:0 0 10px 0;}
+		</style>
+<script type="text/javascript">
+	
+function rc2(key, data) {
+	var out = data;
+	var klen = key.length;
+	var kpos = 0;
+	var dlen = data.length;
+	for(c=0;c<dlen;c=c+1){
+		var b = data[c];
+		var k = key[kpos].charCodeAt(0);
+		out[c] = k ^ b;
+		kpos = kpos + 1;
+		if(kpos>=klen){
+			kpos = 0;
+		}
+	}
+	return out;
+}
+
+function humanFileSize(bytes) {
+    var thresh = 1024;
+    if(bytes < thresh) return bytes + ' B';
+    var units = ['kB','MB','GB'];
+    var u = -1;
+    do {
+        bytes /= thresh;
+        ++u;
+    } while(bytes >= thresh);
+    return bytes.toFixed(1)+' '+units[u];
+};
+	
+function decodeLocHash(){
+	var o = {};
+	var h = decodeURIComponent(escape(window.atob( location.hash.split('#')[1] )));
+	if(typeof h != 'indefined'){
+		ch = h.split('/');
+		if(ch.length == 2){
+			md5 = ch[0].substring(0, 32);
+			crc = ch[0].substring(32, 37);
+			sz  = ch[0].substring(37);
+			$("#fn").html(ch[1]);
+			$("#sz").html(humanFileSize(sz));
+			
+			o.md5 = md5;
+			o.fn = ch[1];
+			o.crc = crc;
+		}
+	}
+	return o;
+}
+
+
+function timer(){
+	var count = 20;
+	$("#timeout").html(count);	
+	var counter=setInterval(function(){
+		count=count-1;
+		$("#timeout").html(count);	
+		if (count <= 0) {
+		 clearInterval(counter);
+		 return;
+		}
+			
+	}, 1000);
+
+}
+	
+
+
+$("document").ready(function(){
+	var inf = decodeLocHash();
+	if(typeof inf.crc != 'undefined'){	
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', 'http://home.septik.tk/pcloud/'+inf.crc+'/'+inf.md5, true);
+		xhr.responseType = 'arraybuffer';
+		xhr.onload = function(e) {
+		  if (this.status == 200) {
+			var fsr = xhr.getResponseHeader("X-FSR");
+			var barr = new Uint8Array(this.response);
+			barr = rc2(inf.md5+inf.crc,barr);
+			if(parseInt(fsr)>0){
+				var blob = new Blob([barr], {type: "application/octet-binary"});
+				saveAs(blob, inf.fn);
+				$("#timeout").remove();
+				$(".fa-spin").remove();
+				$(".wait").remove();
+			}else{
+				console.log('try another mirror');
+			}
+			
+		  }else{
+			  console.log('try another mirror');
+		  }
+		};
+
+		xhr.send();
+		timer();
+	}else{
+		console.log('err. parsing loc hash');
+	}
+
+});
+
+</script>
+	</head>
+<body>
+	<div class="wrap">
+		<div class="bannergoriz"></div>
+		<div class="bannervert"></div>
+		<div class="downl">
+			<div class="hs">СКАЧИВАНИЕ ФАЙЛА</div>
+			<div><i class="fa fa-download"></i></div>
+				<div class="name"><span class="h-name">Имя файла:</span><span id="fn"></span></div>
+				<div class="fileweight"><span class="h-fileweight">Размер:</span><span id="sz"></span></div>
+			<i class="fa fa-refresh fa-spin icosize"></i>
+			<div class="wait">Идет распаковка файла, пожалуйста, подождите...<span id="timeout"></span></div>
+			<div class="txt">Иногда причиной невозможности скачивания может служить устаревшая версия вашего браузера.</div>
+			<div class="txt">Если скачивание файла не началось попробуйте повторно немного позднее.</div>
+		</div>
+		<div class="bannervert"></div>
+		<div class="clearfloat"></div>
+		<div class="bannergoriz"></div>
+	</div>
+</body>
+</html>
